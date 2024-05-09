@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import HotKey
 import AlertToast
+import Cocoa
 
 
 /// A shared instance for managing user interface preferences.
@@ -54,8 +55,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Subwindow dedicated to searching for lyrics.
     var subwindow: NSWindow!
     
+    var statusBarItem: NSStatusItem?
+    
     /// Called when the application finishes launching.
     func applicationDidFinishLaunching(_ aNotification: Notification) {
+        setupStatusBar()
         
         initializeLyrics(withDefault: [
             LyricInfo(id: 0, text: "Not playing.", isCurrent: false, playbackTime: 0, isTranslation: false),
@@ -115,6 +119,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Remove the resizable style mask to disable resizing the window.
         window.styleMask.remove(.resizable)
+        
+        
+    }
+    
+    func setupStatusBar() {
+        statusBarItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
+        if let button = statusBarItem?.button {
+            button.title = "歌词加载中..."
+        }
+        NotificationCenter.default.addObserver(self, selector: #selector(updateStatusBar(_:)), name: NSNotification.Name("UpdateStatusBar"), object: nil)
+    }
+
+    @objc func updateStatusBar(_ notification: Notification) {
+        if let lyric = notification.userInfo?["lyric"] as? String, let button = statusBarItem?.button {
+            button.title = lyric
+        }
+    }
+
+    func applicationWillTerminate(_ notification: Notification) {
+        if let item = statusBarItem {
+            NSStatusBar.system.removeStatusItem(item)
+        }
     }
     
     
@@ -179,6 +205,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func closeSubwindow() {
         subwindow = nil
     }
+    
 }
 
 
@@ -466,5 +493,11 @@ struct LyricsApp: App {
                 Button("Search Lyrics") { handleSearchLyrics() }.keyboardShortcut("s")
             }
         }
+    }
+}
+
+extension LyricsViewModel {
+    func updateStatusBar(with lyric: String) {
+        NotificationCenter.default.post(name: NSNotification.Name("UpdateStatusBar"), object: nil, userInfo: ["lyric": lyric])
     }
 }

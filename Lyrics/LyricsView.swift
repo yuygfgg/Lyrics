@@ -252,7 +252,12 @@ struct LyricsView: View {
         
         // Check if it's time to display the current lyric
         if currentPlaybackTime >= currentLyric.playbackTime {
+            
             debugPrint("currentPlayBackTime=\(currentPlaybackTime), currentLyricPlaybackTime=\(currentLyric.playbackTime), currentIndex=\(lyricViewModel.currentIndex), currentLyricText=\(currentLyric.text)")
+            
+            if !currentLyric.isTranslation{
+                viewModel.updateStatusBar(with: currentLyric.text)
+            }
             
             // Increase the lyric index
             lyricViewModel.currentIndex += 1
@@ -478,4 +483,5 @@ private func viewTrackInformation() {
         }
     }
 }
+
 

@@ -7,7 +7,7 @@
 
 import SwiftUI
 import Foundation
-
+import Cocoa
 
 /// Model representing a search result item.
 struct SearchResultItem: Identifiable {
