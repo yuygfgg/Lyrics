@@ -6,13 +6,15 @@ A macOS app that presents a synchronized scrolling lyrics panel based on the cur
 
 - Display synchronized scrolling lyrics corresponding to system now playing tracks.
 
+- Display lyrics in status bar.
+
 - Automatically loads the LRC file corresponding to the currently playing track and present the lyrics at the correct timeline based on playback progress.
 
 - Monitor events such as pausing, resuming, and track switching, as well as startup and exit events for the specified player.
 
 - Lyrics panel interface supports displaying album art and playback progress of the currently playing track.
 
-- Download missing lyrics automatically
+- Download missing lyrics automatically.
 
 - Allows online search, preview and download of lyrics, currently supports NetEase Cloud Music.
 
