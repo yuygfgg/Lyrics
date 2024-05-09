@@ -12,6 +12,8 @@ A macOS app that presents a synchronized scrolling lyrics panel based on the cur
 
 - Lyrics panel interface supports displaying album art and playback progress of the currently playing track.
 
+- Download missing lyrics automatically
+
 - Allows online search, preview and download of lyrics, currently supports NetEase Cloud Music.
 
 - Robust support for both single-line lyrics and two-line translated lyrics.
