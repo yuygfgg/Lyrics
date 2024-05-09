@@ -284,80 +284,55 @@ struct LyricsView: View {
 func startLyrics() {
     // Retrieve now playing information
     getNowPlayingInfo { nowPlayingInfo in
-        // Check if the now playing information is empty
         guard !nowPlayingInfo.isEmpty else {
             debugPrint("Now playing information is empty.")
             return
         }
-        
-        // Get playback time
-        guard let playbackTime = nowPlayingInfo["ElapsedTime"] as? TimeInterval else {
-            debugPrint("Failed to get playback time.")
+
+        guard let playbackTime = nowPlayingInfo["ElapsedTime"] as? TimeInterval,
+              let artist = nowPlayingInfo["Artist"] as? String,
+              let title = nowPlayingInfo["Title"] as? String else {
+            debugPrint("Failed to get essential playback information.")
             return
         }
-        
-        // Extract artist and title
-        let artist = nowPlayingInfo["Artist"] as? String ?? ""
-        let title = nowPlayingInfo["Title"] as? String ?? ""
-        let keyword = "\(artist) \(title)"
 
-        // Get the path of the lyrics file
+        let keyword = "\(artist) \(title)"
         let lrcPath = getLyricsPath(artist: artist, title: title)
 
-        // Try to read the contents of the lyrics file
         if let lrcContent = try? String(contentsOfFile: lrcPath) {
             debugPrint("Lyrics file loaded: \(lrcPath)")
-            processLyrics(lrcContent: lrcContent, playbackTime: playbackTime)
+            isStopped = false
+            let parser = LyricsParser(lrcContent: lrcContent)
+            viewModel.lyrics = parser.getLyrics()
+            updatePlaybackTime(playbackTime: playbackTime)
         } else {
-            // If local lyrics are not found, perform a search and download the lyrics
+            debugPrint("Failed to read LRC file, attempting to fetch lyrics online.")
+            // Search for the song online using the combined artist and title as the keyword.
             searchSong(keyword: keyword) { result, error in
-                guard error == nil, let songs = result?.songs, !songs.isEmpty else {
-                    debugPrint("Error in searching songs or no songs found")
+                guard let result = result, error == nil, let firstSong = result.songs.first else {
+                    debugPrint("No results found or error occurred: \(error?.localizedDescription ?? "Unknown error")")
+                    initializeLyrics(withDefault:[
+                        LyricInfo(id: 0, text: "\(artist) - \(title)", isCurrent: true, playbackTime: 0, isTranslation: false),
+                        LyricInfo(id: 1, text: "Lyrics not found.", isCurrent: false, playbackTime: 1, isTranslation: false)
+                    ])
                     return
                 }
 
-                let firstSong = songs[0]
+                // Download the lyrics for the first song in the search results.
                 download(id: String(firstSong.id), artist: firstSong.artists.first?.name ?? "", title: firstSong.name, album: firstSong.album.name) { lyricsContent in
                     guard let lyricsContent = lyricsContent else {
-                        debugPrint("Failed to download lyrics")
+                        debugPrint("Failed to download lyrics.")
                         return
                     }
 
                     DispatchQueue.main.async {
-                        processLyrics(lrcContent: lyricsContent, playbackTime: playbackTime)
+                        isStopped = false
+                        let parser = LyricsParser(lrcContent: lyricsContent)
+                        viewModel.lyrics = parser.getLyrics()
+                        updatePlaybackTime(playbackTime: playbackTime)
                     }
                 }
             }
-        }
-    }
-}
-
-private func processLyrics(lrcContent: String, playbackTime: TimeInterval) {
-    // Create an LRC parser
-    let parser = LyricsParser(lrcContent: lrcContent)
-    
-    // Get the parsed lyrics array
-    let lyrics = parser.getLyrics()
-    
-    // Update the lyrics in the view model
-    viewModel.lyrics = lyrics
-    
-    updatePlaybackTime(playbackTime: playbackTime)
-    
-    // 3 seconds later, update and calibrate the playback time
-    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-        let lyricStartTime = Date().timeIntervalSinceReferenceDate
-        getNowPlayingInfo { nowPlayingInfo in
-            guard var updatedPlaybackTime = nowPlayingInfo["ElapsedTime"] as? TimeInterval else {
-                debugPrint("Failed to update playback time.")
-                return
-            }
-            
-            // Calculate the time gap
-            let gap = Date().timeIntervalSinceReferenceDate - lyricStartTime
-            updatedPlaybackTime = updatedPlaybackTime + gap
-            updatePlaybackTime(playbackTime: updatedPlaybackTime)
-            debugPrint("Playback time updated: \(updatedPlaybackTime)")
         }
     }
 }
