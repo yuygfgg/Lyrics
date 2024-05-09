@@ -282,9 +282,6 @@ struct LyricsView: View {
 
 /// Starts displaying lyrics for the currently playing track.
 func startLyrics() {
-    // Record the start time of lyric display
-    //    let lyricStartTime = Date().timeIntervalSinceReferenceDate
-    
     // Retrieve now playing information
     getNowPlayingInfo { nowPlayingInfo in
         // Check if the now playing information is empty
@@ -298,55 +295,69 @@ func startLyrics() {
             debugPrint("Failed to get playback time.")
             return
         }
-    
         
         // Extract artist and title
         let artist = nowPlayingInfo["Artist"] as? String ?? ""
         let title = nowPlayingInfo["Title"] as? String ?? ""
-        
+        let keyword = "\(artist) \(title)"
+
         // Get the path of the lyrics file
         let lrcPath = getLyricsPath(artist: artist, title: title)
-        
+
         // Try to read the contents of the lyrics file
         if let lrcContent = try? String(contentsOfFile: lrcPath) {
             debugPrint("Lyrics file loaded: \(lrcPath)")
-            
-            // Reset the stopped flag
-            isStopped = false
-            
-            // Create an LRC parser
-            let parser = LyricsParser(lrcContent: lrcContent)
-            
-            // Get the parsed lyrics array
-            let lyrics = parser.getLyrics()
-            
-            // Update the lyrics in the view model
-            viewModel.lyrics = lyrics
-            
-            updatePlaybackTime(playbackTime: playbackTime)
-            
-            // 3 seconds later, update and calibrate the playback time
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                let lyricStartTime = Date().timeIntervalSinceReferenceDate
-                getNowPlayingInfo { nowPlayingInfo in
-                    guard var updatedPlaybackTime = nowPlayingInfo["ElapsedTime"] as? TimeInterval else {
-                        debugPrint("Failed to update playback time.")
+            processLyrics(lrcContent: lrcContent, playbackTime: playbackTime)
+        } else {
+            // If local lyrics are not found, perform a search and download the lyrics
+            searchSong(keyword: keyword) { result, error in
+                guard error == nil, let songs = result?.songs, !songs.isEmpty else {
+                    debugPrint("Error in searching songs or no songs found")
+                    return
+                }
+
+                let firstSong = songs[0]
+                download(id: String(firstSong.id), artist: firstSong.artists.first?.name ?? "", title: firstSong.name, album: firstSong.album.name) { lyricsContent in
+                    guard let lyricsContent = lyricsContent else {
+                        debugPrint("Failed to download lyrics")
                         return
                     }
-                    
-                    // Calculate the time gap
-                    let gap = Date().timeIntervalSinceReferenceDate - lyricStartTime
-                    updatedPlaybackTime = updatedPlaybackTime + gap
-                    updatePlaybackTime(playbackTime: updatedPlaybackTime)
-                    debugPrint("Playback time updated: \(updatedPlaybackTime)")
+
+                    DispatchQueue.main.async {
+                        processLyrics(lrcContent: lyricsContent, playbackTime: playbackTime)
+                    }
                 }
             }
-        } else {
-            debugPrint("Failed to read LRC file.")
-            initializeLyrics(withDefault:[
-                LyricInfo(id: 0, text: "\(artist) - \(title)", isCurrent: true, playbackTime: 0, isTranslation: false),
-                LyricInfo(id: 1, text: "Lyrics not found.", isCurrent: false, playbackTime: 1, isTranslation: false)])
+        }
+    }
+}
+
+private func processLyrics(lrcContent: String, playbackTime: TimeInterval) {
+    // Create an LRC parser
+    let parser = LyricsParser(lrcContent: lrcContent)
+    
+    // Get the parsed lyrics array
+    let lyrics = parser.getLyrics()
+    
+    // Update the lyrics in the view model
+    viewModel.lyrics = lyrics
+    
+    updatePlaybackTime(playbackTime: playbackTime)
+    
+    // 3 seconds later, update and calibrate the playback time
+    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+        let lyricStartTime = Date().timeIntervalSinceReferenceDate
+        getNowPlayingInfo { nowPlayingInfo in
+            guard var updatedPlaybackTime = nowPlayingInfo["ElapsedTime"] as? TimeInterval else {
+                debugPrint("Failed to update playback time.")
+                return
+            }
             
+            // Calculate the time gap
+            let gap = Date().timeIntervalSinceReferenceDate - lyricStartTime
+            updatedPlaybackTime = updatedPlaybackTime + gap
+            updatePlaybackTime(playbackTime: updatedPlaybackTime)
+            debugPrint("Playback time updated: \(updatedPlaybackTime)")
         }
     }
 }
