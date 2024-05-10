@@ -208,7 +208,7 @@ struct LyricsSearchView: View {
             }
             if let songs = result?.songs {
                 DispatchQueue.main.async {
-                    // 过滤掉与当前播放歌曲时长差异大于10秒的歌曲
+                    // 过滤掉与当前播放歌曲时长差异大于3秒的歌曲
                     debugPrint("Current Song Duration: \(currentSongDuration)")
                     for song in songs {
                         debugPrint("Song Duration: \(song.duration)")
@@ -233,6 +233,7 @@ struct LyricsSearchView: View {
 ///   - keyword: The keyword to search for.
 ///   - completion: A closure to be executed upon completion of the search, providing either a `Result` or an `Error`.
 func searchSong(keyword: String, completion: @escaping (Result?, Error?) -> Void) {
+    debugPrint("searching...")
     // Ensure the keyword is properly encoded for a URL.
     guard let encodedKeyword = keyword.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) else {
         print("Error: Unable to encode keyword")
@@ -240,7 +241,7 @@ func searchSong(keyword: String, completion: @escaping (Result?, Error?) -> Void
     }
     
     // Construct the API URL for the search.
-    let apiUrl = "https://music.163.com/api/search/get?s=\(encodedKeyword)&type=1&limit=30"
+    let apiUrl = "https://music.163.com/api/search/get?s=\(encodedKeyword)&type=1&limit=50"
     
     // Create a URL object from the API URL string.
     guard let url = URL(string: apiUrl) else {

@@ -286,13 +286,12 @@ struct LyricsView: View {
 
 
 func startLyrics() {
-    // 获取当前播放信息
     getNowPlayingInfo { nowPlayingInfo in
         guard !nowPlayingInfo.isEmpty else {
             debugPrint("Now playing information is empty.")
             return
         }
-
+        
         guard let playbackTime = nowPlayingInfo["ElapsedTime"] as? TimeInterval,
               let artist = nowPlayingInfo["Artist"] as? String,
               let title = nowPlayingInfo["Title"] as? String else {
@@ -300,7 +299,7 @@ func startLyrics() {
             return
         }
 
-        let keyword = "\(artist) - \(title)"
+        let keyword = "\(title)"
         let lrcPath = getLyricsPath(artist: artist, title: title)
 
         if let lrcContent = try? String(contentsOfFile: lrcPath) {
@@ -311,17 +310,36 @@ func startLyrics() {
             updatePlaybackTime(playbackTime: playbackTime)
         } else {
             debugPrint("Failed to read LRC file, attempting to fetch lyrics online.")
-            searchSong(keyword: keyword) { result, error in
-                if let result = result, error == nil {
-                    // 尝试从搜索结果中下载歌词
-                    attemptToDownloadLyricsFromSongs(songs: result.songs, index: 0, playbackTime: playbackTime, artist: artist, title: title)
-                } else {
-                    debugPrint("No results found or error occurred: \(error?.localizedDescription ?? "Unknown error")")
-                    // 在找不到歌词时初始化默认歌词
-                    initializeLyrics(withDefault:[
-                        LyricInfo(id: 0, text: "\(artist) - \(title)", isCurrent: true, playbackTime: 0, isTranslation: false),
-                        LyricInfo(id: 1, text: "Lyrics not found.", isCurrent: false, playbackTime: 1, isTranslation: false)
-                    ])
+            // 先获取当前播放歌曲的时长
+            getCurrentSongDuration { currentSongDuration in
+                guard let currentSongDuration = currentSongDuration else {
+                    debugPrint("Failed to get current song duration.")
+                    return
+                }
+                debugPrint("currentSongDuration = \(currentSongDuration)")
+
+                // 搜索歌曲
+                searchSong(keyword: keyword) { result, error in
+                    guard let result = result, error == nil, let firstSong = result.songs.first(where: { abs(Double($0.duration)/1000 - currentSongDuration) <= 3 }) else {
+                        debugPrint("No suitable results found or error occurred: \(error?.localizedDescription ?? "Unknown error")")
+                        return
+                    }
+
+                    // 下载第一条符合时间要求的歌曲的歌词
+                    debugPrint("downloading name: \(firstSong.name) artist: \(firstSong.artists) album: \(firstSong.artists) duration: \(firstSong.duration)")
+                    download(id: String(firstSong.id), artist: firstSong.artists.first?.name ?? "", title: firstSong.name, album: firstSong.album.name) { lyricsContent in
+                        guard let lyricsContent = lyricsContent else {
+                            debugPrint("Failed to download lyrics.")
+                            return
+                        }
+
+                        DispatchQueue.main.async {
+                            isStopped = false
+                            let parser = LyricsParser(lrcContent: lyricsContent)
+                            viewModel.lyrics = parser.getLyrics()
+                            updatePlaybackTime(playbackTime: playbackTime)
+                        }
+                    }
                 }
             }
         }
