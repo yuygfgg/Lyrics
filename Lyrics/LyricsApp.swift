@@ -502,6 +502,7 @@ struct LyricsApp: App {
 extension LyricsViewModel {
     //update statusbar lyrics
     func updateStatusBar(with lyric: String) {
+        debugPrint("update bar with \(lyric)")
         NotificationCenter.default.post(name: NSNotification.Name("UpdateStatusBar"), object: nil, userInfo: ["lyric": lyric])
     }
 }

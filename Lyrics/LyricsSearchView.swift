@@ -214,7 +214,7 @@ struct LyricsSearchView: View {
                         debugPrint("Song Duration: \(song.duration)")
                     }
                     debugPrint("filter!!")
-                    let filteredSongs = songs.filter { abs(Double($0.duration)/1000 - currentSongDuration) <= 3 }
+                    let filteredSongs = songs.filter { abs(Double($0.duration)/1000 - currentSongDuration) >= 0 }
                             self.searchResults = filteredSongs.map {
                                 SearchResultItem(id: "\($0.id)", title: $0.name, artist: $0.artists.first?.name ?? "Unknown Artist", album: $0.album.name, duration: millisecondsToFormattedString(TimeInterval($0.duration)))
                         }
