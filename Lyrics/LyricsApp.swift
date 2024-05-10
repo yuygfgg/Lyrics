@@ -55,6 +55,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     /// Subwindow dedicated to searching for lyrics.
     var subwindow: NSWindow!
     
+    //StatusBar to show lyrics.
     var statusBarItem: NSStatusItem?
     
     /// Called when the application finishes launching.
@@ -123,6 +124,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
     }
     
+    //init status bar
     func setupStatusBar() {
         statusBarItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let button = statusBarItem?.button {
@@ -131,6 +133,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NotificationCenter.default.addObserver(self, selector: #selector(updateStatusBar(_:)), name: NSNotification.Name("UpdateStatusBar"), object: nil)
     }
 
+    //do status bar update
     @objc func updateStatusBar(_ notification: Notification) {
         if let lyric = notification.userInfo?["lyric"] as? String, let button = statusBarItem?.button {
             button.title = lyric
@@ -497,6 +500,7 @@ struct LyricsApp: App {
 }
 
 extension LyricsViewModel {
+    //update statusbar lyrics
     func updateStatusBar(with lyric: String) {
         NotificationCenter.default.post(name: NSNotification.Name("UpdateStatusBar"), object: nil, userInfo: ["lyric": lyric])
     }

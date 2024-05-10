@@ -98,7 +98,6 @@ func getNowPlayingInfo(completion: @escaping ([String: Any]) -> Void) {
             completion(nowPlayingInfo)
             return
         }
-        
         // Check if the MRContentItem class can be obtained
         if let contentItemClass = objc_getClass("MRContentItem") as? MRContentItem.Type {
             // Attempt to create an instance of MRContentItem with nowPlayingInfo
@@ -132,6 +131,16 @@ func getNowPlayingInfo(completion: @escaping ([String: Any]) -> Void) {
         // Call the completion handler with the updated dictionary
         completion(nowPlayingInfo)
     }
+}
+
+func getCurrentSongDuration(completion: @escaping (TimeInterval?) -> Void) {
+    MRMediaRemoteGetNowPlayingInfo(DispatchQueue.main, { (info) in
+        if let duration = info["kMRMediaRemoteNowPlayingInfoDuration"] as? NSNumber {
+            completion(duration.doubleValue)
+        } else {
+            completion(nil)
+        }
+    })
 }
 
 
@@ -348,6 +357,7 @@ func togglePlayPause() {
         // Check if the detected player is the expected player
         if playerBundleIdentifier != getPlayerNameConfig() {
             debugPrint("Specified player not detected running: \(getPlayerNameConfig())")
+            debugPrint("detected bundle \(playerBundleIdentifier) name \(playerName)")
             showAlert(title: "Error", message: "Specified player not detected running: \(getPlayerNameConfig())")
             return
         }
@@ -397,6 +407,7 @@ func togglePlayNext() {
         // Check if the detected player is the expected player
         if playerBundleIdentifier != getPlayerNameConfig() {
             debugPrint("Specified player not detected running: \(getPlayerNameConfig())")
+            debugPrint("detected: \(playerBundleIdentifier)")
             showAlert(title: "Error", message: "Specified player not detected running: \(getPlayerNameConfig())")
             return
         }

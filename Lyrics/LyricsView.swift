@@ -285,9 +285,8 @@ struct LyricsView: View {
     }}
 
 
-/// Starts displaying lyrics for the currently playing track.
 func startLyrics() {
-    // Retrieve now playing information
+    // 获取当前播放信息
     getNowPlayingInfo { nowPlayingInfo in
         guard !nowPlayingInfo.isEmpty else {
             debugPrint("Now playing information is empty.")
@@ -301,7 +300,7 @@ func startLyrics() {
             return
         }
 
-        let keyword = "\(artist) \(title)"
+        let keyword = "\(artist) - \(title)"
         let lrcPath = getLyricsPath(artist: artist, title: title)
 
         if let lrcContent = try? String(contentsOfFile: lrcPath) {
@@ -312,36 +311,49 @@ func startLyrics() {
             updatePlaybackTime(playbackTime: playbackTime)
         } else {
             debugPrint("Failed to read LRC file, attempting to fetch lyrics online.")
-            // Search for the song online using the combined artist and title as the keyword.
             searchSong(keyword: keyword) { result, error in
-                guard let result = result, error == nil, let firstSong = result.songs.first else {
+                if let result = result, error == nil {
+                    // 尝试从搜索结果中下载歌词
+                    attemptToDownloadLyricsFromSongs(songs: result.songs, index: 0, playbackTime: playbackTime, artist: artist, title: title)
+                } else {
                     debugPrint("No results found or error occurred: \(error?.localizedDescription ?? "Unknown error")")
+                    // 在找不到歌词时初始化默认歌词
                     initializeLyrics(withDefault:[
                         LyricInfo(id: 0, text: "\(artist) - \(title)", isCurrent: true, playbackTime: 0, isTranslation: false),
                         LyricInfo(id: 1, text: "Lyrics not found.", isCurrent: false, playbackTime: 1, isTranslation: false)
                     ])
-                    return
-                }
-
-                // Download the lyrics for the first song in the search results.
-                download(id: String(firstSong.id), artist: firstSong.artists.first?.name ?? "", title: firstSong.name, album: firstSong.album.name) { lyricsContent in
-                    guard let lyricsContent = lyricsContent else {
-                        debugPrint("Failed to download lyrics.")
-                        return
-                    }
-
-                    DispatchQueue.main.async {
-                        isStopped = false
-                        let parser = LyricsParser(lrcContent: lyricsContent)
-                        viewModel.lyrics = parser.getLyrics()
-                        updatePlaybackTime(playbackTime: playbackTime)
-                    }
                 }
             }
         }
     }
 }
 
+private func attemptToDownloadLyricsFromSongs(songs: [Song], index: Int, playbackTime: TimeInterval, artist: String, title: String) {
+    if index >= songs.count {
+        debugPrint("Attempted all songs but failed to download lyrics.")
+        // 所有下载尝试失败后，显示默认歌词
+        initializeLyrics(withDefault: [
+            LyricInfo(id: 0, text: "\(artist) - \(title)", isCurrent: true, playbackTime: 0, isTranslation: false)
+        ])
+        return
+    }
+
+    let song = songs[index]
+    download(id: String(song.id), artist: song.artists.first?.name ?? "", title: song.name, album: song.album.name) { lyricsContent in
+        guard let lyricsContent = lyricsContent else {
+            debugPrint("Failed to download lyrics for song \(song.name). Trying next song.")
+            attemptToDownloadLyricsFromSongs(songs: songs, index: index + 1, playbackTime: playbackTime, artist: artist, title: title)
+            return
+        }
+
+        DispatchQueue.main.async {
+            isStopped = false
+            let parser = LyricsParser(lrcContent: lyricsContent)
+            viewModel.lyrics = parser.getLyrics()
+            updatePlaybackTime(playbackTime: playbackTime)
+        }
+    }
+}
 
 /// Stops displaying lyrics for the currently playing track.
 func stopLyrics() {

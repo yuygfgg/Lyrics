@@ -164,6 +164,16 @@ struct LyricsSearchView: View {
         }
         
     }
+    func durationStringToSeconds(_ duration: String) -> TimeInterval? {
+        let components = duration.split(separator: ":")
+        guard components.count == 2,
+              let minutes = Int(components[0]),
+              let seconds = Int(components[1]) else {
+            return nil
+        }
+        return TimeInterval(minutes * 60 + seconds)
+    }
+    
     
     
     /**
@@ -175,32 +185,39 @@ struct LyricsSearchView: View {
      - Returns: None
      */
     private func searchButtonTapped() {
-        
-        // Check if the trimmed searchText is empty
+        // 检查搜索关键词是否为空
         if searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            showAlert(title: "Search Lyrics", message: "Keyword input is empty.")
+            debugPrint("Search Lyrics: Keyword input is empty.")
             return
         }
-        
-        // Call the searchSong function with the entered keyword.
-        searchSong(keyword: searchText) { result, error in
-            
-            // Handle any error returned by the search.
-            if let error = error {
-                print("Error: \(error)")
+
+        // 先获取当前播放歌曲的时长
+        getCurrentSongDuration { currentSongDuration in
+            guard let currentSongDuration = currentSongDuration else {
                 DispatchQueue.main.async {
-                    
-                    // Show an alert indicating that the search failed.
-                    showAlert(title: "Search lyrics", message: "Failed to search lyrics.")
+                    debugPrint("Error: Failed to get current song duration.")
                 }
                 return
             }
-            
-            // If there are songs in the result, update the searchResults state.
+
+            // 然后进行歌曲搜索
+        searchSong(keyword: self.searchText) { result, error in
+            if let error = error {
+                debugPrint("Error during song search: \(error)")
+                return
+            }
             if let songs = result?.songs {
                 DispatchQueue.main.async {
-                    self.searchResults = songs.map {
-                        SearchResultItem(id: "\($0.id)", title: $0.name, artist: $0.artists.first?.name ?? "Unknown Artist", album: $0.album.name, duration: millisecondsToFormattedString( TimeInterval($0.duration)))
+                    // 过滤掉与当前播放歌曲时长差异大于10秒的歌曲
+                    debugPrint("Current Song Duration: \(currentSongDuration)")
+                    for song in songs {
+                        debugPrint("Song Duration: \(song.duration)")
+                    }
+                    debugPrint("filter!!")
+                    let filteredSongs = songs.filter { abs(Double($0.duration)/1000 - currentSongDuration) <= 3 }
+                            self.searchResults = filteredSongs.map {
+                                SearchResultItem(id: "\($0.id)", title: $0.name, artist: $0.artists.first?.name ?? "Unknown Artist", album: $0.album.name, duration: millisecondsToFormattedString(TimeInterval($0.duration)))
+                        }
                     }
                 }
             }
