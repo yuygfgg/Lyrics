@@ -316,30 +316,19 @@ func startLyrics() {
                     debugPrint("Failed to get current song duration.")
                     return
                 }
-                debugPrint("currentSongDuration = \(currentSongDuration)")
 
                 // 搜索歌曲
                 searchSong(keyword: keyword) { result, error in
-                    guard let result = result, error == nil, let firstSong = result.songs.first(where: { abs(Double($0.duration)/1000 - currentSongDuration) <= 3 }) else {
+                    guard let result = result, error == nil else {
                         debugPrint("No suitable results found or error occurred: \(error?.localizedDescription ?? "Unknown error")")
                         return
                     }
 
-                    // 下载第一条符合时间要求的歌曲的歌词
-                    debugPrint("downloading name: \(firstSong.name) artist: \(firstSong.artists) album: \(firstSong.artists) duration: \(firstSong.duration)")
-                    download(id: String(firstSong.id), artist: firstSong.artists.first?.name ?? "", title: firstSong.name, album: firstSong.album.name) { lyricsContent in
-                        guard let lyricsContent = lyricsContent else {
-                            debugPrint("Failed to download lyrics.")
-                            return
-                        }
+                    // 过滤掉与当前播放歌曲时长差异大于3秒的歌曲
+                    let filteredSongs = result.songs.filter { abs(Double($0.duration)/1000 - currentSongDuration) <= 3 }
 
-                        DispatchQueue.main.async {
-                            isStopped = false
-                            let parser = LyricsParser(lrcContent: lyricsContent)
-                            viewModel.lyrics = parser.getLyrics()
-                            updatePlaybackTime(playbackTime: playbackTime)
-                        }
-                    }
+                    // 尝试从过滤后的歌曲中下载歌词
+                    attemptToDownloadLyricsFromSongs(songs: filteredSongs, index: 0, playbackTime: playbackTime, artist: artist, title: title)
                 }
             }
         }
