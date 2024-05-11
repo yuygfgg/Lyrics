@@ -355,6 +355,7 @@ private func attemptToDownloadLyricsFromSongs(songs: [Song], index: Int, playbac
         initializeLyrics(withDefault: [
             LyricInfo(id: 0, text: "\(artist) - \(title)", isCurrent: true, playbackTime: 0, isTranslation: false)
         ])
+        NotificationCenter.default.post(name: NSNotification.Name("UpdateStatusBar"), object: nil, userInfo: ["lyric": "\(artist) - \(title)"])
         return
     }
 
