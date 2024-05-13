@@ -308,11 +308,16 @@ func startLyrics() {
 
             var keyword = "\(title)"  // 默认关键词
             var shouldFilter = true   // 默认应用过滤
+            var cueTrackStartTime = 0.0
+            var lrcDelta = 0.0
 
             // 当歌曲时长大于等于600秒时，修改搜索关键词并且不过滤搜索结果
             if currentSongDuration >= 600 {
                 keyword = "\(artist) - \(title)"
                 shouldFilter = false
+                cueTrackStartTime = Date().timeIntervalSinceReferenceDate - startTime
+                debugPrint("detected CUE indexed track playing!!")
+                debugPrint("detect CUE track startpoint \(cueTrackStartTime)")
             }
 
             let lrcPath = getLyricsPath(artist: artist, title: title)
@@ -322,7 +327,7 @@ func startLyrics() {
                 isStopped = false
                 let parser = LyricsParser(lrcContent: lrcContent)
                 viewModel.lyrics = parser.getLyrics()
-                updatePlaybackTime(playbackTime: playbackTime)
+                updatePlaybackTime(playbackTime: playbackTime - cueTrackStartTime)
             } else {
                 debugPrint("Failed to read LRC file, attempting to fetch lyrics online. Search for \(keyword)")
                 // 搜索歌曲
@@ -336,19 +341,22 @@ func startLyrics() {
                     if shouldFilter {
                         // 过滤掉与当前播放歌曲时长差异大于3秒的歌曲
                         songs = result.songs.filter { abs(Double($0.duration) / 1000 - currentSongDuration) <= 3 }
+                        lrcDelta = 0
+                        
                     } else {
                         songs = result.songs  // 不应用过滤
+                        lrcDelta = cueTrackStartTime
                     }
 
                     // 尝试从过滤后的歌曲中下载歌词
-                    attemptToDownloadLyricsFromSongs(songs: songs, index: 0, playbackTime: playbackTime, artist: artist, title: title)
+                    attemptToDownloadLyricsFromSongs(songs: songs, index: 0, playbackTime: playbackTime, artist: artist, title: title, delta: lrcDelta)
                 }
             }
         }
     }
 }
 
-private func attemptToDownloadLyricsFromSongs(songs: [Song], index: Int, playbackTime: TimeInterval, artist: String, title: String) {
+private func attemptToDownloadLyricsFromSongs(songs: [Song], index: Int, playbackTime: TimeInterval, artist: String, title: String, delta: TimeInterval) {
     if index >= songs.count {
         debugPrint("Attempted all songs but failed to download lyrics.")
         // 所有下载尝试失败后，显示默认歌词
@@ -364,7 +372,7 @@ private func attemptToDownloadLyricsFromSongs(songs: [Song], index: Int, playbac
     download(id: String(song.id), artist: song.artists.first?.name ?? "", title: song.name, album: song.album.name) { lyricsContent in
         guard let lyricsContent = lyricsContent else {
             debugPrint("Failed to download lyrics for song \(song.name). Trying next song.")
-            attemptToDownloadLyricsFromSongs(songs: songs, index: index + 1, playbackTime: playbackTime, artist: artist, title: title)
+            attemptToDownloadLyricsFromSongs(songs: songs, index: index + 1, playbackTime: playbackTime, artist: artist, title: title, delta: delta)
             return
         }
 
@@ -372,7 +380,8 @@ private func attemptToDownloadLyricsFromSongs(songs: [Song], index: Int, playbac
             isStopped = false
             let parser = LyricsParser(lrcContent: lyricsContent)
             viewModel.lyrics = parser.getLyrics()
-            updatePlaybackTime(playbackTime: playbackTime)
+            updatePlaybackTime(playbackTime: playbackTime - delta)
+            debugPrint("playbacktime = \(playbackTime) delta = \(delta)")
         }
     }
 }

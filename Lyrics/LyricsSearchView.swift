@@ -407,7 +407,8 @@ func download(id: String, artist: String, title: String, album: String, completi
 //    
 //    return lyricItems
 //}
-func parseLyric(_ lyricText: String) -> [LyricItem] {
+func parseLyric(_ lyricText: String/*, lrcDelta: TimeInterval*/) -> [LyricItem] {
+    debugPrint("parseLyric!!")
     var lyricItems = [LyricItem]()
 
     // Split the lyric text into lines.
@@ -431,12 +432,14 @@ func parseLyric(_ lyricText: String) -> [LyricItem] {
 
             // Convert the timestamp to a time interval.
             if let timestamp = lyricsTimestampToTimeInterval(timestampString) {
+                debugPrint("timestampString is \(timestamp)")
                 let lyricItem = LyricItem(timestamp: timestamp, content: content)
+                debugPrint("lyricItem is \(lyricItem)")
                 lyricItems.append(lyricItem)
             }
         }
     }
-
+    debugPrint("lyricItems: \(lyricItems)")
     return lyricItems
 }
 
