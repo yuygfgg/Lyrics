@@ -36,6 +36,8 @@ class LyricsParser {
     /// Parses the content of an LRC file.
     /// - Parameter content: Content of the LRC file as a string.
     func parseLRCContent(_ content: String) {
+        debugPrint("called lyrics parser!!!")
+        debugPrint("raw content:!!\(content)raw end!")
         // Replace CRLF with LF
         let unifiedContent = content.replacingOccurrences(of: "\r\n", with: "\n")
         
@@ -90,6 +92,7 @@ class LyricsParser {
         
         // Sort the lyrics array based on timestamps
         lyrics.sort { $0.playbackTime < $1.playbackTime }
+        debugPrint("lyrics after!! \(lyrics) lyrics after end!")
     }
     
     /// Gets the parsed lyrics as an array of LyricInfo.

@@ -286,73 +286,88 @@ struct LyricsView: View {
 
 
 func startLyrics() {
-    getNowPlayingInfo { nowPlayingInfo in
-        guard !nowPlayingInfo.isEmpty else {
-            debugPrint("Now playing information is empty.")
-            return
-        }
-        
-        guard let playbackTime = nowPlayingInfo["ElapsedTime"] as? TimeInterval,
-              let artist = nowPlayingInfo["Artist"] as? String,
-              let title = nowPlayingInfo["Title"] as? String else {
-            debugPrint("Failed to get essential playback information.")
-            return
-        }
-
-        // 先获取当前播放歌曲的时长
-        getCurrentSongDuration { currentSongDuration in
-            guard let currentSongDuration = currentSongDuration else {
-                debugPrint("Failed to get current song duration.")
+    fetchNowPlayingInfo { nowPlayingInfo, playbackTime, artist, title in
+        fetchCurrentSongDuration { optionalCurrentSongDuration in
+            guard let currentSongDuration = optionalCurrentSongDuration else {
+                debugPrint("Current song duration is unavailable.")
                 return
             }
-
-            var keyword = "\(title)"  // 默认关键词
-            var shouldFilter = true   // 默认应用过滤
-            var cueTrackStartTime = 0.0
-            var lrcDelta = 0.0
-
-            // 当歌曲时长大于等于600秒时，修改搜索关键词并且不过滤搜索结果
-            if currentSongDuration >= 600 {
-                keyword = "\(artist) - \(title)"
-                shouldFilter = false
-                cueTrackStartTime = Date().timeIntervalSinceReferenceDate - startTime
-                debugPrint("detected CUE indexed track playing!!")
-                debugPrint("detect CUE track startpoint \(cueTrackStartTime)")
-            }
-
-            let lrcPath = getLyricsPath(artist: artist, title: title)
-
-            if let lrcContent = try? String(contentsOfFile: lrcPath) {
-                debugPrint("Lyrics file loaded: \(lrcPath)")
-                isStopped = false
-                let parser = LyricsParser(lrcContent: lrcContent)
-                viewModel.lyrics = parser.getLyrics()
-                updatePlaybackTime(playbackTime: playbackTime - cueTrackStartTime)
-            } else {
-                debugPrint("Failed to read LRC file, attempting to fetch lyrics online. Search for \(keyword)")
-                // 搜索歌曲
-                searchSong(keyword: keyword) { result, error in
-                    guard let result = result, error == nil else {
-                        debugPrint("No suitable results found or error occurred: \(error?.localizedDescription ?? "Unknown error")")
-                        return
-                    }
-
-                    let songs: [Song]
-                    if shouldFilter {
-                        // 过滤掉与当前播放歌曲时长差异大于3秒的歌曲
-                        songs = result.songs.filter { abs(Double($0.duration) / 1000 - currentSongDuration) <= 3 }
-                        lrcDelta = 0
-                        
-                    } else {
-                        songs = result.songs  // 不应用过滤
-                        lrcDelta = cueTrackStartTime
-                    }
-
-                    // 尝试从过滤后的歌曲中下载歌词
-                    attemptToDownloadLyricsFromSongs(songs: songs, index: 0, playbackTime: playbackTime, artist: artist, title: title, delta: lrcDelta)
-                }
-            }
+            handleLyricsLoading(currentSongDuration: currentSongDuration, nowPlayingInfo: nowPlayingInfo, playbackTime: playbackTime, artist: artist, title: title)
         }
+    }
+}
+
+private func fetchCurrentSongDuration(completion: @escaping (TimeInterval?) -> Void) {
+    getCurrentSongDuration { currentSongDuration in
+        guard let duration = currentSongDuration else {
+            debugPrint("Failed to get current song duration.")
+            completion(nil) // Pass nil forward if unable to fetch the duration
+            return
+        }
+        completion(duration)
+    }
+}
+
+private func fetchNowPlayingInfo(completion: @escaping ([String: Any], TimeInterval, String, String) -> Void) {
+    getNowPlayingInfo { nowPlayingInfo in
+        guard !nowPlayingInfo.isEmpty,
+              let playbackTime = nowPlayingInfo["ElapsedTime"] as? TimeInterval,
+              let artist = nowPlayingInfo["Artist"] as? String,
+              let title = nowPlayingInfo["Title"] as? String else {
+            debugPrint("Failed to fetch essential playback information.")
+            return
+        }
+        completion(nowPlayingInfo, playbackTime, artist, title)
+    }
+}
+
+private func handleLyricsLoading(currentSongDuration: TimeInterval, nowPlayingInfo: [String: Any], playbackTime: TimeInterval, artist: String, title: String) {
+    var keyword = "\(title)"
+    var shouldFilter = true
+    var cueTrackStartTime = 0.0  // Define here
+
+    if currentSongDuration >= 600 {
+        keyword = "\(artist) - \(title)"
+        shouldFilter = false
+        cueTrackStartTime = Date().timeIntervalSinceReferenceDate - startTime
+        debugPrint("Detected CUE indexed track playing!!")
+        debugPrint("Detect CUE track startpoint \(cueTrackStartTime)")
+    }
+
+    let lrcPath = getLyricsPath(artist: artist, title: title)
+    loadOrFetchLyrics(lrcPath: lrcPath, keyword: keyword, shouldFilter: shouldFilter, currentSongDuration: currentSongDuration, playbackTime: playbackTime, cueTrackStartTime: cueTrackStartTime, artist: artist, title: title)
+}
+
+private func loadOrFetchLyrics(lrcPath: String, keyword: String, shouldFilter: Bool, currentSongDuration: TimeInterval, playbackTime: TimeInterval, cueTrackStartTime: TimeInterval, artist: String, title: String) {
+    if let lrcContent = try? String(contentsOfFile: lrcPath) {
+        debugPrint("Lyrics file loaded: \(lrcPath)")
+        isStopped = false
+        let parser = LyricsParser(lrcContent: lrcContent)
+        viewModel.lyrics = parser.getLyrics()
+        updatePlaybackTime(playbackTime: playbackTime - cueTrackStartTime)
+    } else {
+        debugPrint("Failed to read LRC file, attempting to fetch lyrics online. Search for \(keyword)")
+        searchAndHandleOnlineLyrics(keyword: keyword, shouldFilter: shouldFilter, currentSongDuration: currentSongDuration, playbackTime: playbackTime, cueTrackStartTime: cueTrackStartTime, artist: artist, title: title)
+    }
+}
+
+private func searchAndHandleOnlineLyrics(keyword: String, shouldFilter: Bool, currentSongDuration: TimeInterval, playbackTime: TimeInterval, cueTrackStartTime: TimeInterval, artist: String, title: String) {
+    searchSong(keyword: keyword) { result, error in
+        guard let result = result, error == nil else {
+            debugPrint("No suitable results found or error occurred: \(error?.localizedDescription ?? "Unknown error")")
+            return
+        }
+
+        let songs: [Song]
+        var lrcDelta = 0.0
+        if shouldFilter {
+            songs = result.songs.filter { abs(Double($0.duration) / 1000 - currentSongDuration) <= 3 }
+        } else {
+            songs = result.songs
+            lrcDelta = cueTrackStartTime  // Use cueTrackStartTime to adjust lyrics timing if necessary
+        }
+
+        attemptToDownloadLyricsFromSongs(songs: songs, index: 0, playbackTime: playbackTime, artist: artist, title: title, delta: lrcDelta)
     }
 }
 
@@ -378,6 +393,7 @@ private func attemptToDownloadLyricsFromSongs(songs: [Song], index: Int, playbac
 
         DispatchQueue.main.async {
             isStopped = false
+            debugPrint("In func attemptToDownloadLyricsFromSongs, got lrcContent \(lyricsContent) end lrcContent!!")
             let parser = LyricsParser(lrcContent: lyricsContent)
             viewModel.lyrics = parser.getLyrics()
             updatePlaybackTime(playbackTime: playbackTime - delta)
