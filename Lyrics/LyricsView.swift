@@ -22,6 +22,8 @@ class LyricsViewModel: ObservableObject {
     /// Published property holding the current index of the lyrics.
     @Published var currentIndex: Int = 0
     
+    @Published var isLyricsDisabledForCurrentTrack = false
+    
 }
 
 /// The main view model instance for managing lyrics.
@@ -42,6 +44,10 @@ struct LyricsView: View {
     
     @State private var isCopiedAlertPresented: Bool = false
     @State private var isHovered = false
+    private func refreshView() {
+        // Force SwiftUI to refresh the view
+        lyricViewModel.objectWillChange.send()
+    }
     
     var body: some View {
 
@@ -201,6 +207,19 @@ struct LyricsView: View {
             
             Divider()
             
+            Button("Disable for this track") {
+                lyricViewModel.isLyricsDisabledForCurrentTrack = true
+                fetchNowPlayingInfo { nowPlayingInfo, _, artist, title, _ in
+                    disableLyricsForTrack(artist: artist, title: title)
+                }
+            }
+            
+            Button("Enable for this track") {
+                fetchNowPlayingInfo { nowPlayingInfo, _, artist, title, _ in
+                    enableLyricsForTrack(artist: artist, title: title)
+                }
+            }
+            
             
         }
         .onDisappear() {
@@ -214,6 +233,7 @@ struct LyricsView: View {
             
             togglePlayPause()
         })
+        
     }
     
     
@@ -283,18 +303,87 @@ struct LyricsView: View {
             }
         }
     }}
+private func showDefaultLyrics(artist: String, title: String) {
+    // 初始化默认歌词
+    initializeLyrics(withDefault: [
+        LyricInfo(id: 0, text: "\(artist) - \(title)", isCurrent: true, playbackTime: 0, isTranslation: false)
+    ])
+    
+    NotificationCenter.default.post(name: NSNotification.Name("UpdateStatusBar"), object: nil, userInfo: ["lyric": "\(artist) - \(title)"])
+}
 
+private func disableLyricsForTrack(artist: String, title: String) {
+    let fileManager = FileManager.default
+    let directoryPath = getLyricsPath(artist: artist, title: title) // 获取歌词储存文件夹路径
+    let fileName = "\(artist) - \(title).disabled"
+    let filePath = (directoryPath as NSString).appendingPathComponent(fileName)
+    debugPrint("Directory Path: \(directoryPath)")
+    debugPrint("File Path: \(filePath)")
+
+    // 检查目录是否存在，如果不存在则尝试创建
+    if !fileManager.fileExists(atPath: directoryPath) {
+        do {
+            try fileManager.createDirectory(atPath: directoryPath, withIntermediateDirectories: true, attributes: nil)
+            debugPrint("Directory created successfully.")
+        } catch {
+            debugPrint("Failed to create directory: \(error)")
+            return
+        }
+    }
+
+    // 创建标记文件
+    if !fileManager.createFile(atPath: filePath, contents: nil, attributes: nil) {
+        debugPrint("Failed to create file at path: \(filePath)")
+    } else {
+        debugPrint("File created successfully at path: \(filePath)")
+    }
+}
+
+private func enableLyricsForTrack(artist: String, title: String) {
+    let fileManager = FileManager.default
+    let directoryPath = getLyricsPath(artist: artist, title: title)
+    let disabledFileName = "\(artist) - \(title).disabled"
+    let disabledFilePath = (directoryPath as NSString).appendingPathComponent(disabledFileName)
+
+    // 检查 .disabled 文件是否存在
+    if fileManager.fileExists(atPath: disabledFilePath) {
+        do {
+            try fileManager.removeItem(atPath: disabledFilePath)
+            debugPrint("Disabled file deleted successfully.")
+            // 歌词启用后，重新加载歌词
+            startLyrics()  // 这将重新开始歌词加载过程
+        } catch {
+            debugPrint("Failed to delete disabled file: \(error)")
+        }
+    } else {
+        debugPrint(".disabled file does not exist. No need to delete.")
+    }
+    // 更新ViewModel状态，反映歌词已启用
+    LyricsViewModel.shared.isLyricsDisabledForCurrentTrack = false
+}
 
 func startLyrics() {
-    fetchNowPlayingInfo { nowPlayingInfo, playbackTime, artist, title in
+    debugPrint("startlrc")
+    fetchNowPlayingInfo { nowPlayingInfo, playbackTime, artist, title, album in
         fetchCurrentSongDuration { optionalCurrentSongDuration in
             guard let currentSongDuration = optionalCurrentSongDuration else {
                 debugPrint("Current song duration is unavailable.")
                 return
             }
-            handleLyricsLoading(currentSongDuration: currentSongDuration, nowPlayingInfo: nowPlayingInfo, playbackTime: playbackTime, artist: artist, title: title)
+            LyricsViewModel.shared.isLyricsDisabledForCurrentTrack = false
+            debugPrint(nowPlayingInfo)
+            handleLyricsLoading(currentSongDuration: currentSongDuration, nowPlayingInfo: nowPlayingInfo, playbackTime: playbackTime, artist: artist, title: title, album: album)
         }
     }
+}
+
+private func isLyricsDisabledForTrack(artist: String, title: String) -> Bool {
+    let fileManager = FileManager.default
+    let directoryPath = getLyricsPath(artist: artist, title: title) // 获取歌词储存文件夹路径
+    let fileName = "\(artist) - \(title).disabled"
+    let filePath = (directoryPath as NSString).appendingPathComponent(fileName)
+    debugPrint("filePath = \(filePath)")
+    return fileManager.fileExists(atPath: filePath)
 }
 
 private func fetchCurrentSongDuration(completion: @escaping (TimeInterval?) -> Void) {
@@ -308,37 +397,43 @@ private func fetchCurrentSongDuration(completion: @escaping (TimeInterval?) -> V
     }
 }
 
-private func fetchNowPlayingInfo(completion: @escaping ([String: Any], TimeInterval, String, String) -> Void) {
+private func fetchNowPlayingInfo(completion: @escaping ([String: Any], TimeInterval, String, String, String) -> Void) {
     getNowPlayingInfo { nowPlayingInfo in
         guard !nowPlayingInfo.isEmpty,
               let playbackTime = nowPlayingInfo["ElapsedTime"] as? TimeInterval,
               let artist = nowPlayingInfo["Artist"] as? String,
+              let album = nowPlayingInfo["Album"] as? String,
               let title = nowPlayingInfo["Title"] as? String else {
             debugPrint("Failed to fetch essential playback information.")
             return
         }
-        completion(nowPlayingInfo, playbackTime, artist, title)
+        completion(nowPlayingInfo, playbackTime, artist, title, album)
     }
 }
 
-private func handleLyricsLoading(currentSongDuration: TimeInterval, nowPlayingInfo: [String: Any], playbackTime: TimeInterval, artist: String, title: String) {
-    var keyword = "\(title)"
+private func handleLyricsLoading(currentSongDuration: TimeInterval, nowPlayingInfo: [String: Any], playbackTime: TimeInterval, artist: String, title: String, album: String) {
+    if isLyricsDisabledForTrack(artist: artist, title: title) {
+        showDefaultLyrics(artist: artist, title: title)
+        return
+    }
+
+    var keyword = "\(artist) - \(title)"
     var shouldFilter = true
-    var cueTrackStartTime = 0.0  // Define here
+    var cueTrackStartTime = 0.0
 
     if currentSongDuration >= 600 {
-        keyword = "\(artist) - \(title)"
         shouldFilter = false
-        cueTrackStartTime = Date().timeIntervalSinceReferenceDate - startTime
+//        cueTrackStartTime = Date().timeIntervalSinceReferenceDate - startTime
         debugPrint("Detected CUE indexed track playing!!")
-        debugPrint("Detect CUE track startpoint \(cueTrackStartTime)")
+//        debugPrint("Detect CUE track startpoint \(cueTrackStartTime)")
     }
 
     let lrcPath = getLyricsPath(artist: artist, title: title)
-    loadOrFetchLyrics(lrcPath: lrcPath, keyword: keyword, shouldFilter: shouldFilter, currentSongDuration: currentSongDuration, playbackTime: playbackTime, cueTrackStartTime: cueTrackStartTime, artist: artist, title: title)
+    loadOrFetchLyrics(lrcPath: lrcPath, keyword: keyword, shouldFilter: shouldFilter, currentSongDuration: currentSongDuration, playbackTime: playbackTime, cueTrackStartTime: cueTrackStartTime, artist: artist, title: title, album: album)
 }
 
-private func loadOrFetchLyrics(lrcPath: String, keyword: String, shouldFilter: Bool, currentSongDuration: TimeInterval, playbackTime: TimeInterval, cueTrackStartTime: TimeInterval, artist: String, title: String) {
+private func loadOrFetchLyrics(lrcPath: String, keyword: String, shouldFilter: Bool, currentSongDuration: TimeInterval, playbackTime: TimeInterval, cueTrackStartTime: TimeInterval, artist: String, title: String, album: String) {
+    
     if let lrcContent = try? String(contentsOfFile: lrcPath) {
         debugPrint("Lyrics file loaded: \(lrcPath)")
         isStopped = false
@@ -347,14 +442,20 @@ private func loadOrFetchLyrics(lrcPath: String, keyword: String, shouldFilter: B
         updatePlaybackTime(playbackTime: playbackTime - cueTrackStartTime)
     } else {
         debugPrint("Failed to read LRC file, attempting to fetch lyrics online. Search for \(keyword)")
-        searchAndHandleOnlineLyrics(keyword: keyword, shouldFilter: shouldFilter, currentSongDuration: currentSongDuration, playbackTime: playbackTime, cueTrackStartTime: cueTrackStartTime, artist: artist, title: title)
+        searchAndHandleOnlineLyrics(keyword: keyword, shouldFilter: shouldFilter, currentSongDuration: currentSongDuration, playbackTime: playbackTime, cueTrackStartTime: cueTrackStartTime, artist: artist, title: title, album: album, isRetry: false)
     }
 }
 
-private func searchAndHandleOnlineLyrics(keyword: String, shouldFilter: Bool, currentSongDuration: TimeInterval, playbackTime: TimeInterval, cueTrackStartTime: TimeInterval, artist: String, title: String) {
+private func searchAndHandleOnlineLyrics(keyword: String, shouldFilter: Bool, currentSongDuration: TimeInterval, playbackTime: TimeInterval, cueTrackStartTime: TimeInterval, artist: String, title: String, album: String, isRetry: Bool) {
     searchSong(keyword: keyword) { result, error in
         guard let result = result, error == nil else {
-            debugPrint("No suitable results found or error occurred: \(error?.localizedDescription ?? "Unknown error")")
+            if !isRetry {
+                let newKeyword = "\(artist) - \(title)"
+                debugPrint("No suitable results found or error occurred: \(error?.localizedDescription ?? "Unknown error"). Retrying with keyword \(newKeyword)")
+                searchAndHandleOnlineLyrics(keyword: newKeyword, shouldFilter: shouldFilter, currentSongDuration: currentSongDuration, playbackTime: playbackTime, cueTrackStartTime: cueTrackStartTime, artist: artist, title: title, album: album, isRetry: true)
+            } else {
+                debugPrint("No suitable results found or error occurred: \(error?.localizedDescription ?? "Unknown error") after retry.")
+            }
             return
         }
 
@@ -396,7 +497,7 @@ private func attemptToDownloadLyricsFromSongs(songs: [Song], index: Int, playbac
             debugPrint("In func attemptToDownloadLyricsFromSongs, got lrcContent \(lyricsContent) end lrcContent!!")
             let parser = LyricsParser(lrcContent: lyricsContent)
             viewModel.lyrics = parser.getLyrics()
-            updatePlaybackTime(playbackTime: playbackTime - delta)
+            updatePlaybackTime(playbackTime: playbackTime /*- delta*/)
             debugPrint("playbacktime = \(playbackTime) delta = \(delta)")
         }
     }
@@ -445,6 +546,8 @@ func initializeLyrics(withDefault lyrics: [LyricInfo]) {
     startTime = Date().timeIntervalSinceReferenceDate
     // Set the lyrics to the provided default set
     viewModel.lyrics = lyrics
+    // Reset the disabled state
+    viewModel.isLyricsDisabledForCurrentTrack = false
 }
 
 

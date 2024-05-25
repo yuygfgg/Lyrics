@@ -113,6 +113,7 @@ func getNowPlayingInfo(completion: @escaping ([String: Any]) -> Void) {
         // Extract information from the result
         nowPlayingInfo["Artist"] = information["kMRMediaRemoteNowPlayingInfoArtist"] as? String ?? ""
         nowPlayingInfo["Title"] = information["kMRMediaRemoteNowPlayingInfoTitle"] as? String ?? ""
+        nowPlayingInfo["Album"] = information["kMRMediaRemoteNowPlayingInfoAlbum"] as? String ?? ""
         //        nowPlayingInfo["ElapsedTime"] = information["kMRMediaRemoteNowPlayingInfoElapsedTime"] as? TimeInterval ?? 0.0
         
         if (UIPreferences.shared.isCoverImageVisible) {
@@ -221,9 +222,10 @@ func handleNowPlayingInfoDidChangeNotification(notification: Notification) {
             
             // Check playback state
             getPlaybackState { isPlaying in
-                if isPlaying {
+//                if isPlaying {
+//                    sleep(1000000000)
                     startLyrics()
-                }
+//                }
             }
         }
     }

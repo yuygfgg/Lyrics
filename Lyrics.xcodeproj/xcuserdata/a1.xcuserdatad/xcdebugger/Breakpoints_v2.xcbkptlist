@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bucket
+   uuid = "30A928CC-B5D3-4992-BDC8-FA52FC0D13CF"
+   type = "1"
+   version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "E7F68CBD-DF0A-43E3-86CC-60B3ADCBDF60"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Lyrics/MediaRemoteHelpers.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "227"
+            endingLineNumber = "227"
+            landmarkName = "handleNowPlayingInfoDidChangeNotification(notification:)"
+            landmarkType = "9">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "2E8FE117-74C5-4A9E-8E85-29E20CB26D98"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Lyrics/LyricsView.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "365"
+            endingLineNumber = "365"
+            landmarkName = "startLyrics()"
+            landmarkType = "9">
+            <Locations>
+               <Location
+                  uuid = "2E8FE117-74C5-4A9E-8E85-29E20CB26D98 - 7e553054f9e20887"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "Lyrics.handleNowPlayingApplicationPlaybackStateDidChange(notification: Foundation.Notification) -&gt; ()"
+                  moduleName = "Lyrics"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/a1/Lyrics/Lyrics/LyricsView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "366"
+                  endingLineNumber = "366"
+                  offsetFromSymbolStart = "536">
+               </Location>
+               <Location
+                  uuid = "2E8FE117-74C5-4A9E-8E85-29E20CB26D98 - 99185de1e78ebc82"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "function signature specialization &lt;Arg[0] = Dead&gt; of closure #1 (Swift.Bool) -&gt; () in closure #1 (Swift.Dictionary&lt;Swift.String, Any&gt;) -&gt; () in Lyrics.handleNowPlayingInfoDidChangeNotification(notification: Foundation.Notification) -&gt; ()"
+                  moduleName = "Lyrics"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/a1/Lyrics/Lyrics/LyricsView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "366"
+                  endingLineNumber = "366"
+                  offsetFromSymbolStart = "48">
+               </Location>
+               <Location
+                  uuid = "2E8FE117-74C5-4A9E-8E85-29E20CB26D98 - 3944181dfb989d3"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "Lyrics.enableLyricsForTrack(artist: Swift.String, title: Swift.String) -&gt; ()"
+                  moduleName = "Lyrics"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/a1/Lyrics/Lyrics/LyricsView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "366"
+                  endingLineNumber = "366"
+                  offsetFromSymbolStart = "648">
+               </Location>
+               <Location
+                  uuid = "2E8FE117-74C5-4A9E-8E85-29E20CB26D98 - 9cd3be45a5ad227f"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #1 (Swift.Bool) -&gt; () in closure #1 (Swift.String) -&gt; () in closure #1 @Swift.MainActor () -&gt; () in closure #2 (Swift.Optional&lt;Swift.String&gt;) -&gt; () in closure #4 (Swift.Set&lt;Swift.String&gt;) -&gt; () in closure #1 () -&gt; SwiftUI.TupleView&lt;(SwiftUI.HStack&lt;SwiftUI.TupleView&lt;(SwiftUI.TextField&lt;SwiftUI.Text&gt;, SwiftUI.Button&lt;SwiftUI.Text&gt;)&gt;&gt;, &lt;&lt;opaque return type of SwiftUI.View.border&lt;&#x3c4;_0_0 where &#x3c4;_1_0: SwiftUI.ShapeStyle&gt;(_: &#x3c4;_1_0, width: CoreGraphics.CGFloat) -&gt; some&gt;&gt;.0)&gt; in Lyrics.LyricsSearchView.body.getter : some"
+                  moduleName = "Lyrics"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/a1/Lyrics/Lyrics/LyricsView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "366"
+                  endingLineNumber = "366"
+                  offsetFromSymbolStart = "160">
+               </Location>
+               <Location
+                  uuid = "2E8FE117-74C5-4A9E-8E85-29E20CB26D98 - 94fdf128e13e52fc"
+                  shouldBeEnabled = "Yes"
+                  ignoreCount = "0"
+                  continueAfterRunningActions = "No"
+                  symbolName = "closure #2 (Swift.Bool) -&gt; () in Lyrics.handleRecalibration() -&gt; ()"
+                  moduleName = "Lyrics"
+                  usesParentBreakpointCondition = "Yes"
+                  urlString = "file:///Users/a1/Lyrics/Lyrics/LyricsView.swift"
+                  startingColumnNumber = "9223372036854775807"
+                  endingColumnNumber = "9223372036854775807"
+                  startingLineNumber = "366"
+                  endingLineNumber = "366"
+                  offsetFromSymbolStart = "160">
+               </Location>
+            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
+</Bucket>
