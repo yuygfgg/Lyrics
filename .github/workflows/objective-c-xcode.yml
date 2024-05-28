@@ -16,8 +16,6 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Set up Xcode 15
-      run: sudo xcode-select --switch /Applications/Xcode_15.app
 
     - name: Build the project
       run: xcodebuild -project Lyrics.xcodeproj -scheme Lyrics -configuration Release build
